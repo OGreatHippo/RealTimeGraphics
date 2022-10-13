@@ -1,7 +1,7 @@
 /* 
 	main.cpp : This file contains the 'main' function. Program execution begins and ends there.
 
-	A set of helper classes and start files for the 3D Graphics Programming module
+	A set of helper classes and start files for the 3D Graphics Programming module, which can be used as a base for your Real Time Graphics application
 	
 	This project uses a number of helper libraries contained in the External folder within the project directory
 	The ExternalLibraryHeaders.h loads their headers
@@ -15,7 +15,7 @@
 		If you run the exe outside of Viz these dlls need to be in the same folder as the exe but note that the provided
 		MakeDistributable.bat batch file automatically copies them into the correct directory for you
 
-	Keith ditchburn 2019
+	Keith Ditchburn 2019 / Jamie Matthews 2021
 */
 
 #include "ExternalLibraryHeaders.h"
@@ -30,7 +30,7 @@ int main()
 	RedirectStandardOuput();
 
 	// Use the helper function to set up GLFW, GLEW and OpenGL
-	GLFWwindow* window{ Helpers::CreateGLFWWindow(1280, 720, "3GP Framework") };
+	GLFWwindow* window{ Helpers::CreateGLFWWindow(1280, 720, "Graphics Framework") };
 	if (!window)
 		return -1;
 

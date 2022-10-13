@@ -5,18 +5,7 @@
 #include "Helper.h"
 #include "Mesh.h"
 #include "Camera.h"
-
-struct Mesh
-{
-	GLuint tex{ 0 };
-	GLuint vao{ 0 };
-	GLuint numElements{ 0 };
-};
-
-struct Model
-{
-	std::vector<Mesh> mesh;
-};
+#include "Model.h"
 
 class Renderer
 {
@@ -24,12 +13,17 @@ private:
 	// Program object - to host shaders
 	GLuint m_program{ 0 };
 
-	bool m_wireframe{ false };
+	// Vertex Array Object to wrap all render settings
+	GLuint m_VAO{ 0 };
+
+	// Number of elments to use when rendering
+	GLuint m_numElements{ 0 };
 
 	std::vector<Model> models;
 
+	bool m_wireframe{ false };
+
 	bool CreateProgram();
-	
 public:
 	Renderer();
 	~Renderer();
@@ -37,8 +31,6 @@ public:
 
 	// Create and / or load geometry, this is like 'level load'
 	bool InitialiseGeometry();
-
-	bool CreateTerrain(int size);
 
 	// Render the scene
 	void Render(const Helpers::Camera& camera, float deltaTime);

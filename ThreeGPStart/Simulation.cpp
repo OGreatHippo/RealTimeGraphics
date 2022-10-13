@@ -75,5 +75,6 @@ bool Simulation::Update(GLFWwindow* window)
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
+
 	return true;
 }

@@ -62,6 +62,10 @@ namespace Helpers
 		std::vector<glm::vec3> normals;
 		std::vector<glm::vec2> uvCoords;
 
+		GLuint tex{ 0 };
+		GLuint vao{ 0 };
+		GLuint numElements{ 0 };
+
 		// Elements
 		std::vector<unsigned int> elements;
 
