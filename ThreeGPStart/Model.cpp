@@ -107,9 +107,11 @@ void Model::CreateModel(std::string modelPath, std::string texturePath)
 
 			//FIX THIS
 
-			/*model.mesh.push_back(modelMesh);
+			Model::mesh.push_back(modelMesh);
 
-			Renderer::models.push_back(model);*/
+			//models.push_back(jeep);
+
+			//Renderer::AddModel();
 		}
 		return;
 	}

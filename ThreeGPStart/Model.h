@@ -8,7 +8,6 @@ class Model
 {
 	std::string modelFilePath;
 	std::string textureFilePath;
-	std::vector<Helpers::Mesh> mesh;
 
 	Model(std::string modelPath, std::string texturePath)
 	{
@@ -16,10 +15,11 @@ class Model
 		texturePath = textureFilePath;
 	}
 
-	Model();
-
 public :
+		std::vector<Helpers::Mesh> mesh;
+
 		void CreateModel(std::string modelPath, std::string texturePath);
 		void UpdateModel();
+		Model();
 };
 
