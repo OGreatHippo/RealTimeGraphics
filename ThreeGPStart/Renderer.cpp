@@ -1,5 +1,5 @@
 #include "Renderer.h"
-#include "Camera.h"
+//#include "Camera.h"
 
 Renderer::Renderer() 
 {
@@ -74,13 +74,12 @@ bool Renderer::InitialiseGeometry()
 
 	// Helpers has an object for loading 3D geometry, supports most types
 	
-	CreateTerrain(10000);
+	CreateTerrain(2000);
 
-
+	Model Jeep("Data\\Models\\Jeep\\jeep.obj", "Data\\Models\\Jeep\\jeep_army.jpg");
 
 	// Good idea to check for an error now:	
 	Helpers::CheckForGLError();
-
 	
 	return true;
 }

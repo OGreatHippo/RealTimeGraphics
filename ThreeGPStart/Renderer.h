@@ -7,6 +7,8 @@
 #include "Camera.h"
 #include "Model.h"
 
+class Model;
+
 class Renderer
 {
 private:
