@@ -104,16 +104,8 @@ void Model::CreateModel(std::string modelPath, std::string texturePath)
 
 			glGenerateMipmap(GL_TEXTURE_2D);
 
-
-			//FIX THIS
-
 			Model::mesh.push_back(modelMesh);
-
-			//models.push_back(jeep);
-
-			//Renderer::AddModel();
 		}
-		return;
 	}
 }
 

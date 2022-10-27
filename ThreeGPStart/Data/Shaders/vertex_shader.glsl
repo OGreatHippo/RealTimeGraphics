@@ -19,6 +19,7 @@ out float varying_gouraud;
 void main(void)
 {
 	light_position.y = 500;
+	light_position.z = 2000;
 
 	varying_normal = mat3(model_xform) * vertex_normal;
 	varying_coord = vertex_texcoord;

@@ -1,5 +1,6 @@
 #include "Renderer.h"
-//#include "Camera.h"
+
+class Mesh;
 
 Renderer::Renderer() 
 {
@@ -11,7 +12,7 @@ Renderer::~Renderer()
 {
 	// TODO: clean up any memory used including OpenGL objects via glDelete* calls
 	glDeleteProgram(m_program);
-	glDeleteBuffers(1, &m_VAO);
+	//glDeleteBuffers(1, &m_VAO);
 }
 
 // Use IMGUI for a simple on screen GUI
@@ -74,9 +75,19 @@ bool Renderer::InitialiseGeometry()
 
 	// Helpers has an object for loading 3D geometry, supports most types
 	
-	CreateTerrain(2000);
+	CreateTerrain(10000);
 
 	Model Jeep("Data\\Models\\Jeep\\jeep.obj", "Data\\Models\\Jeep\\jeep_army.jpg");
+	Model Apple("Data\\Models\\Apple\\apple.obj", "Data\\Models\\Apple\\2.jpg");
+	Model Apple2("Data\\Models\\Apple\\apple.obj", "Data\\Models\\Bones\\bones.bmp");
+	Model Mummy("Data\\Models\\Mummy\\mummy.x", "Data\\Models\\Mummy\\mummy.bmp");
+	Model Mummy2("Data\\Models\\Mummy\\mummy.x", "Data\\Models\\AquaPig\\aqua_pig_1k.png");
+
+	models.push_back(Jeep);
+	models.push_back(Apple);
+	models.push_back(Apple2);
+	models.push_back(Mummy);
+	models.push_back(Mummy2);
 
 	// Good idea to check for an error now:	
 	Helpers::CheckForGLError();
@@ -299,34 +310,57 @@ bool Renderer::CreateTerrain(int size)
 // Render the scene. Passed the delta time since last called.
 void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 {			
-
-	// Configure pipeline settings
+	Helpers::CheckForGLError();
+	// Configure normal pipeline settings
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 
-	// Wireframe mode controlled by ImGui
 	if (m_wireframe)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	else
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	// Clear buffers from previous frame
-	glClearColor(0.0f, 0.0f, 0.0f, 0.f);
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	// TODO: Compute viewport and projection matrix
+	// Compute viewport and projection matrix
+	GLint viewportSize[4];
+	glGetIntegerv(GL_VIEWPORT, viewportSize);
+	const float aspect_ratio = viewportSize[2] / (float)viewportSize[3];
+	glm::mat4 projection_xform = glm::perspective(glm::radians(45.0f), aspect_ratio, 1.0f, 10000.0f);
 
-	// TODO: Compute camera view matrix and combine with projection matrix for passing to shader
-
-	// TODO: Send the combined matrix to the shader in a uniform
-
-	// TODO: render each mesh. Send the correct model matrix to the shader in a uniform
-
-	// Always a good idea, when debugging at least, to check for GL errors each frame
+	// Compute camera view matrix and combine with projection matrix for passing to shader
+	glm::mat4 view_xform = glm::lookAt(camera.GetPosition(), camera.GetPosition() + camera.GetLookVector(), camera.GetUpVector());
+	glm::mat4 combined_xform = projection_xform * view_xform;
 	Helpers::CheckForGLError();
-}
+	glUseProgram(m_program);
 
-void Renderer::AddModel(Model model)
-{
-	models.push_back(model);
+	// Send the combined matrix to the shader in a uniform
+
+	Helpers::CheckForGLError();
+
+	GLuint combined_xform_id = glGetUniformLocation(m_program, "combined_xform");
+	glUniformMatrix4fv(combined_xform_id, 1, GL_FALSE, glm::value_ptr(combined_xform));
+	glm::mat4 model_xform = glm::mat4(1);
+	GLuint model_xform_id = glGetUniformLocation(m_program, "model_xform");
+	glUniformMatrix4fv(model_xform_id, 1, GL_FALSE, glm::value_ptr(model_xform));
+
+	// Send the model matrix to the shader in a uniform
+
+	for (Model& mod : models)
+	{
+		for (Helpers::Mesh& mesh : mod.mesh)
+		{
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, mesh.tex);
+			glUniform1i(glGetUniformLocation(m_program, "sampler_tex"), 0);
+
+			glBindVertexArray(mesh.vao);
+			glDrawElements(GL_TRIANGLES, mesh.numElements, GL_UNSIGNED_INT, (void*)0);
+		}
+	}
+
+	// Always a good idea, when debugging at least, to check for GL errors
+	Helpers::CheckForGLError();
 }

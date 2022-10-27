@@ -34,11 +34,8 @@ public:
 	// Create and / or load geometry, this is like 'level load'
 	bool InitialiseGeometry();
 
+	bool CreateTerrain(int size);
 	// Render the scene
 	void Render(const Helpers::Camera& camera, float deltaTime);
-
-	bool CreateTerrain(int size);
-
-	void AddModel(Model model);
 };
 
