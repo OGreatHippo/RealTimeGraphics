@@ -83,6 +83,17 @@ bool Renderer::InitialiseGeometry()
 	Model Mummy("Data\\Models\\Mummy\\mummy.x", "Data\\Models\\Mummy\\mummy.bmp");
 	Model Mummy2("Data\\Models\\Mummy\\mummy.x", "Data\\Models\\AquaPig\\aqua_pig_1k.png");
 
+	glm::vec3 mummyScale = glm::vec3(50);
+
+	Mummy.scaleModel(mummyScale);
+	Mummy2.scaleModel(mummyScale);
+
+	Mummy.transformModel(glm::vec3(30,1,2));
+	Mummy2.transformModel(glm::vec3(30, 1, -2));
+
+	Apple.transformModel(glm::vec3(0, 200, 1700));
+	Apple2.transformModel(glm::vec3(0, 200, -1700));
+
 	models.push_back(Jeep);
 	models.push_back(Apple);
 	models.push_back(Apple2);
@@ -344,12 +355,16 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 	glUniformMatrix4fv(combined_xform_id, 1, GL_FALSE, glm::value_ptr(combined_xform));
 	glm::mat4 model_xform = glm::mat4(1);
 	GLuint model_xform_id = glGetUniformLocation(m_program, "model_xform");
-	glUniformMatrix4fv(model_xform_id, 1, GL_FALSE, glm::value_ptr(model_xform));
+	
 
 	// Send the model matrix to the shader in a uniform
 
 	for (Model& mod : models)
 	{
+		model_xform = mod.modelMatrix;
+
+		glUniformMatrix4fv(model_xform_id, 1, GL_FALSE, glm::value_ptr(model_xform));
+
 		for (Helpers::Mesh& mesh : mod.mesh)
 		{
 			glActiveTexture(GL_TEXTURE0);

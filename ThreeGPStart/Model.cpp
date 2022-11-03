@@ -5,6 +5,16 @@ Model::Model()
 
 }
 
+void Model::transformModel(glm::vec3 position)
+{
+	modelMatrix = glm::translate(modelMatrix, position);
+}
+
+void Model::scaleModel(glm::vec3 scale)
+{
+	modelMatrix = glm::scale(modelMatrix, scale);
+}
+
 Model::Model(std::string modelPath, std::string texturePath)
 {
 	CreateModel(modelPath, texturePath);
