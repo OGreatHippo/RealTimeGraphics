@@ -74,6 +74,9 @@
     <ClInclude Include="Model.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -131,5 +134,14 @@
     <None Include="Data\Shaders\vertex_shader.glsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Data\Shaders\LightVS.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Data\Shaders\LightFC.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="GraphicsFramework.rc" />
   </ItemGroup>
 </Project>
