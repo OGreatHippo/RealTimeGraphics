@@ -39,7 +39,7 @@ bool Renderer::CreateProgram()
 	// Create a new program (returns a unqiue id)
 	m_program = glCreateProgram();
 
-	m_lights = glCreateProgram();
+	//m_lights = glCreateProgram();
 
 	// Load and create vertex and fragment shaders
 	GLuint vertex_shader{ Helpers::LoadAndCompileShader(GL_VERTEX_SHADER, "Data/Shaders/vertex_shader.glsl") };
@@ -47,17 +47,17 @@ bool Renderer::CreateProgram()
 	if (vertex_shader == 0 || fragment_shader == 0)
 		return false;
 
-	GLuint LightVS{ Helpers::LoadAndCompileShader(GL_VERTEX_SHADER, "Data/Shaders/LightVS.glsl") };
+	/*GLuint LightVS{ Helpers::LoadAndCompileShader(GL_VERTEX_SHADER, "Data/Shaders/LightVS.glsl") };
 	GLuint LightFC{ Helpers::LoadAndCompileShader(GL_FRAGMENT_SHADER, "Data/Shaders/LightFC.glsl") };
 	if (LightVS == 0 || LightFC == 0)
-		return false;
+		return false;*/
 
 	// Attach the vertex shader to this program (copies it)
 	glAttachShader(m_program, vertex_shader);
 
 	// The attibute 0 maps to the input stream "vertex_position" in the vertex shader
 	// Not needed if you use (location=0) in the vertex shader itself
-	//glBindAttribLocation(m_program, 0, "vertex_position");
+	glBindAttribLocation(m_program, 0, "vertex_position");
 
 	// Attach the fragment shader (copies it)
 	glAttachShader(m_program, fragment_shader);
@@ -67,25 +67,25 @@ bool Renderer::CreateProgram()
 	glDeleteShader(fragment_shader);
 
 	// Attach the vertex shader to this program (copies it)
-	glAttachShader(m_lights, LightVS);
+	//glAttachShader(m_lights, LightVS);
 
 	// The attibute 0 maps to the input stream "vertex_position" in the vertex shader
 	// Not needed if you use (location=0) in the vertex shader itself
 	//glBindAttribLocation(m_program, 0, "vertex_position");
 
 	// Attach the fragment shader (copies it)
-	glAttachShader(m_lights, LightFC);
+	//glAttachShader(m_lights, LightFC);
 
 	// Done with the originals of these as we have made copies
-	glDeleteShader(LightVS);
-	glDeleteShader(LightFC);
+	//glDeleteShader(LightVS);
+	//glDeleteShader(LightFC);
 
 	// Link the shaders, checking for errors
 	if (!Helpers::LinkProgramShaders(m_program))
 		return false;
 
-	if (!Helpers::LinkProgramShaders(m_lights))
-		return false;
+	/*if (!Helpers::LinkProgramShaders(m_lights))
+		return false;*/
 
 	return !Helpers::CheckForGLError();
 }
@@ -107,16 +107,16 @@ bool Renderer::InitialiseGeometry()
 	Model Mummy("Data\\Models\\Mummy\\mummy.x", "Data\\Models\\Mummy\\mummy.bmp");
 	Model Mummy2("Data\\Models\\Mummy\\mummy.x", "Data\\Models\\AquaPig\\aqua_pig_1k.png");
 
-	glm::vec3 mummyScale = glm::vec3(50);
+	glm::vec3 mummyScale = glm::vec3(8);
 
-	Mummy.scaleModel(mummyScale);
-	Mummy2.scaleModel(mummyScale);
-
-	Mummy.transformModel(glm::vec3(30,1,2));
-	Mummy2.transformModel(glm::vec3(30, 1, -2));
+	Mummy.transformModel(glm::vec3(200,5,20));
+	Mummy2.transformModel(glm::vec3(200, 5, -20));
 
 	Apple.transformModel(glm::vec3(0, 200, 1700));
 	Apple2.transformModel(glm::vec3(0, 200, -1700));
+
+	Mummy.scaleModel(mummyScale);
+	Mummy2.scaleModel(mummyScale);
 
 	models.push_back(Jeep);
 	models.push_back(Apple);
@@ -372,36 +372,35 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 
 	glUseProgram(m_program);
 
-	glm::vec3 lightPosition = glm::vec3(0, 500, 2000);
-	glUniform3fv(glGetUniformLocation(m_program, "lightPos"), 1, glm::value_ptr(lightPosition));
-
-	glm::mat4 viewPosition = view_xform;
-		glGetUniformLocation(m_program, "viewPos");
-	GLuint lightColour = 
-		glGetUniformLocation(m_program, "lightColour");
-	GLuint objectColour = 
-		glGetUniformLocation(m_program, "objectColour");
-
-	glUseProgram(m_lights);
+	GLuint combined_xform_id = glGetUniformLocation(m_program, "combined_xform");
+	glUniformMatrix4fv(combined_xform_id, 1, GL_FALSE, glm::value_ptr(combined_xform));
+	glm::mat4 model_xform = glm::mat4(1);
+	GLuint model_xform_id = glGetUniformLocation(m_program, "model_xform");
 
 	// Send the combined matrix to the shader in a uniform
 
 	Helpers::CheckForGLError();
 
-	GLuint combined_xform_id = glGetUniformLocation(m_lights, "combined_xform");
-	glUniformMatrix4fv(combined_xform_id, 1, GL_FALSE, glm::value_ptr(combined_xform));
-	glm::mat4 model_xform = glm::mat4(1);
-	GLuint model_xform_id = glGetUniformLocation(m_lights, "model_xform");
+	//glUseProgram(m_lights);
+
+	//glm::vec3 lightPosition = glm::vec3(0, 500, 0);
+	//glUniform3fv(glGetUniformLocation(m_program, "lightPos"), 1, glm::value_ptr(lightPosition));
+
+	//glm::mat4 viewPosition = view_xform;
+	//	glGetUniformLocation(m_program, "viewPos");
+	//GLuint lightColour = 
+	//	glGetUniformLocation(m_program, "lightColour");
+	//GLuint objectColour = 
+	//	glGetUniformLocation(m_program, "objectColour");
+
+	//GLuint combined_xform_id = glGetUniformLocation(m_lights, "combined_xform");
+	//glUniformMatrix4fv(combined_xform_id, 1, GL_FALSE, glm::value_ptr(combined_xform));
+	//glm::mat4 model_xform = glm::mat4(1);
+	//GLuint model_xform_id = glGetUniformLocation(m_lights, "model_xform");
 
 	// Send the combined matrix to the shader in a uniform
 
 	Helpers::CheckForGLError();
-
-	/*GLuint combined_xform_id = glGetUniformLocation(m_program, "combined_xform");
-	glUniformMatrix4fv(combined_xform_id, 1, GL_FALSE, glm::value_ptr(combined_xform));
-	glm::mat4 model_xform = glm::mat4(1);
-	GLuint model_xform_id = glGetUniformLocation(m_program, "model_xform");*/
-	
 
 	// Send the model matrix to the shader in a uniform
 
