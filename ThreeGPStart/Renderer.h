@@ -6,6 +6,21 @@
 #include "Mesh.h"
 #include "Camera.h"
 #include "Model.h"
+#include <string>
+
+struct PointLight
+{
+	glm::vec3 position;
+	glm::vec3 colour;
+
+	float constant;
+	float linear;
+	float quadratic;
+
+	glm::vec3 ambient;
+	glm::vec3 diffuse;
+	glm::vec3 specular;
+};
 
 class Model;
 
