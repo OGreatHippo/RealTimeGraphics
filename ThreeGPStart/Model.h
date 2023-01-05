@@ -15,7 +15,6 @@ public :
 		Model(std::string modelPath, std::string texturePath);
 
 		void CreateModel(std::string modelPath, std::string texturePath);
-		void UpdateModel();
 		Model();
 
 		void transformModel(glm::vec3 position);

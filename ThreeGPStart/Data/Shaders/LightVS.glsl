@@ -13,9 +13,9 @@ out vec3 varying_position;
 
 void main(void)
 {
-	varying_normal = mat3(model_xform) * vertex_normal;
+	varying_position = vec3(model_xform * vec4(vertex_position, 1.0));
+	varying_normal = mat3(transpose(inverse(model_xform))) * vertex_normal;  
 	varying_coord = vertex_texcoord;
-	varying_position = mat4x3(model_xform) * vec4(vertex_position, 1.0);
 
 	gl_Position = combined_xform * model_xform * vec4(vertex_position, 1.0);
 }

@@ -118,8 +118,3 @@ void Model::CreateModel(std::string modelPath, std::string texturePath)
 		}
 	}
 }
-
-void Model::UpdateModel()
-{
-
-}

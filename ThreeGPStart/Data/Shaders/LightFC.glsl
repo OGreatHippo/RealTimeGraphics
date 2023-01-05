@@ -1,30 +1,27 @@
 #version 330
 
-struct PointLight 
-{  
-    vec3 position;
-	vec3 colour;
-    float intensity;
+    uniform vec3 lightposition;
+	uniform vec3 lightcolour;
 
-    float constant;
-    float linear;
-    float quadratic;  
+    uniform float lightconstant;
+    uniform float lightlinear;
+    uniform float lightquadratic;  
 
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-};
+    uniform vec3 lightambient;
+    uniform vec3 lightdiffuse;
+    uniform vec3 lightspecular;
 
-#define NR_POINT_LIGHTS 1
-uniform PointLight pointLights[NR_POINT_LIGHTS];
+#define NR_POINT_LIGHTS 2
 
-struct Material 
+uniform struct Material 
 {
-    sampler2D diffuse;
+    //sampler2D diffuse;
     sampler2D specular;
 }; 
   
 uniform Material material;
+
+vec3 light_intensity;
 
 uniform sampler2D sampler_tex;
 uniform vec3 viewPos;
@@ -35,24 +32,27 @@ in vec3 varying_normal;
 
 out vec4 fragment_colour;
 
-vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
+vec3 CalcPointLight(vec3 normal, vec3 fragPos, vec3 viewDir)
 {
-    vec3 lightDir = normalize(light.position - fragPos);
-
-	// diffuse shading
+    vec3 lightDir = normalize(lightposition - fragPos);
+    // diffuse shading
     float diff = max(dot(normal, lightDir), 0.0);
 
+    vec3 reflectDir = reflect(-lightDir, normal);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32f);
+
     // attenuation
-    float distance = length(light.position - fragPos);
-    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance)); 
-    
+    float distance = length(lightposition - fragPos);
+    float attenuation = 1.0 / (lightconstant + lightlinear * distance + lightquadratic * (distance * distance));    
     // combine results
-    vec3 ambient = light.ambient * vec3(texture(material.diffuse, varying_coord));
-    vec3 diffuse = light.diffuse * diff * vec3(texture(material.diffuse, varying_coord));
+    vec3 ambient = lightambient * vec3(texture(sampler_tex, varying_coord));
+    vec3 diffuse = lightdiffuse * diff * vec3(texture(sampler_tex, varying_coord));
+    vec3 specular = lightspecular * spec * vec3(texture(material.specular, varying_coord));
     ambient *= attenuation;
     diffuse *= attenuation;
-    return (light.colour + ambient + diffuse);
-} 
+    specular *= attenuation;
+    return (ambient + diffuse + specular);
+}
 
 void main(void)
 {
@@ -62,10 +62,9 @@ void main(void)
 
     vec3 viewDir = normalize(viewPos - varying_position);
 
-	for(int i = 0; i < NR_POINT_LIGHTS; i++)
-	{
-		tex_colour *= CalcPointLight(pointLights[i], varying_normal, varying_position, viewDir);
-	}
+    float light_intensity = max(0, dot(viewDir, varying_normal));
+
+    tex_colour *= CalcPointLight(varying_normal, varying_position, viewDir) * light_intensity;
 
 	fragment_colour = vec4(tex_colour, 1);
 }

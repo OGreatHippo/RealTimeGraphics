@@ -12,6 +12,7 @@ Renderer::~Renderer()
 {
 	// TODO: clean up any memory used including OpenGL objects via glDelete* calls
 	glDeleteProgram(m_program);
+	glDeleteProgram(m_lights);
 	//glDeleteBuffers(1, &m_VAO);
 }
 
@@ -99,13 +100,13 @@ bool Renderer::InitialiseGeometry()
 	Model Mummy("Data\\Models\\Mummy\\mummy.x", "Data\\Models\\Mummy\\mummy.bmp");
 	Model Mummy2("Data\\Models\\Mummy\\mummy.x", "Data\\Models\\AquaPig\\aqua_pig_1k.png");
 
-	glm::vec3 mummyScale = glm::vec3(8);
+	Mummy.transformModel(glm::vec3(1000, 75, 400));
+	Mummy2.transformModel(glm::vec3(1000, 75, -400));
+
+	glm::vec3 mummyScale = glm::vec3(80);
 
 	Mummy.scaleModel(mummyScale);
 	Mummy2.scaleModel(mummyScale);
-
-	Mummy.transformModel(glm::vec3(20, 1, 5));
-	Mummy2.transformModel(glm::vec3(20, 1, -5));
 
 	Apple.transformModel(glm::vec3(0, 200, 1700));
 	Apple2.transformModel(glm::vec3(0, 200, -1700));
@@ -342,6 +343,10 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 
+	glDepthMask(GL_TRUE);
+	glDepthFunc(GL_LEQUAL);
+	glDisable(GL_BLEND);
+
 	if (m_wireframe)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	else
@@ -361,6 +366,10 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 	glm::mat4 view_xform = glm::lookAt(camera.GetPosition(), camera.GetPosition() + camera.GetLookVector(), camera.GetUpVector());
 	glm::mat4 combined_xform = projection_xform * view_xform;
 
+	glm::vec3 matSpecular = glm::vec3(0.1f, 0.1f, 0.1f);
+	GLuint matSpecularID = glGetUniformLocation(m_lights, "material.specular");
+	glUniform3fv(matSpecularID, 1, glm::value_ptr(matSpecular));
+
 	Helpers::CheckForGLError();
 
 	glUseProgram(m_program);
@@ -370,7 +379,7 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 	glm::mat4 model_xform = glm::mat4(1);
 	GLuint model_xform_id = glGetUniformLocation(m_program, "model_xform");
 
-	/*for (Model& mod : models)
+	for (Model& mod : models)
 	{
 		model_xform = mod.modelMatrix;
 
@@ -385,55 +394,98 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 			glBindVertexArray(mesh.vao);
 			glDrawElements(GL_TRIANGLES, mesh.numElements, GL_UNSIGNED_INT, (void*)0);
 		}
-	}*/
+	}
+
+	glUseProgram(m_program);
+
+	combined_xform_id = glGetUniformLocation(m_program, "combined_xform");
+	glUniformMatrix4fv(combined_xform_id, 1, GL_FALSE, glm::value_ptr(combined_xform));
+	model_xform = glm::mat4(1);
+	model_xform_id = glGetUniformLocation(m_program, "model_xform");
+
+	for (Model& mod : models)
+	{
+		model_xform = mod.modelMatrix;
+
+		glUniformMatrix4fv(model_xform_id, 1, GL_FALSE, glm::value_ptr(model_xform));
+
+		for (Helpers::Mesh& mesh : mod.mesh)
+		{
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, mesh.tex);
+			glUniform1i(glGetUniformLocation(m_program, "sampler_tex"), 0);
+
+			glBindVertexArray(mesh.vao);
+			glDrawElements(GL_TRIANGLES, mesh.numElements, GL_UNSIGNED_INT, (void*)0);
+		}
+	}
 
 	// Send the combined matrix to the shader in a uniform
 
+	glEnable(GL_DEPTH_TEST);
+
+	glDepthMask(GL_FALSE);
+	glDepthFunc(GL_EQUAL);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_ONE, GL_ONE);
+
 	Helpers::CheckForGLError();
 
-	const int numOfLights = 1;
-
-	PointLight lights[numOfLights];
-
-	for (int i = 0; i < numOfLights; i++)
+	glm::vec3 lightPositions[] =
 	{
-		glUseProgram(m_lights);
+		glm::vec3(0, 500, 1700),
+		glm::vec3(0, 500, 0),
+		glm::vec3(0, 500, -1700)
+	};
 
+	glm::vec3 lightColours[] =
+	{
+		glm::vec3(1, 0, 0),
+		glm::vec3(0, 1, 0),
+		glm::vec3(0, 0, 1)
+	};
+
+	glUseProgram(m_lights);
+
+	const int numLights = 3;
+
+	for (int i = 0; i < numLights; i++)
+	{
 		glm::vec3 cameraPos = camera.GetPosition();
 		GLuint cameraPositionID = glGetUniformLocation(m_lights, "viewPos");
 		glUniform3fv(cameraPositionID, 1, glm::value_ptr(cameraPos));
 
-		glm::vec3 lightPos = glm::vec3(0, 0, 0);
-		GLuint lightsPosID = glGetUniformLocation(m_lights, "pointLights[0].position");
-		glUniform3fv(lightsPosID, 1, glm::value_ptr(lightPos));
+		glm::vec3 lightPos = glm::vec3(lightPositions[i]);
+		GLuint lightPosID = glGetUniformLocation(m_lights, "lightposition");
+		glUniform3fv(lightPosID, 1, glm::value_ptr(lightPos));
 
-		glm::vec3 lightColour = glm::vec3(1, 1, 1);
-		GLuint lightsColourID = glGetUniformLocation(m_lights, "pointLights[0].colour");
-		glUniform3fv(lightsColourID, 1, glm::value_ptr(lightColour));
+		glm::vec3 lightColour = glm::vec3(lightColours[i]);
+		GLuint lightColourID = glGetUniformLocation(m_lights, "lightcolour");
+		glUniform3fv(lightColourID, 1, glm::value_ptr(lightColour));
 
-		GLfloat lightConstant = 1;
-		GLuint lightsConstantID = glGetUniformLocation(m_lights, "pointLights[0].constant");
-		glUniform1f(lightsConstantID, lightConstant);
+		GLfloat lightConstant = 1.0f;
+		GLuint lightConstantID = glGetUniformLocation(m_lights, "lightconstant");
+		glUniform1f(lightConstantID, lightConstant);
 
-		GLfloat lightLinear = 0;
-		GLuint lightsLinearID = glGetUniformLocation(m_lights, "pointLights[0].linear");
-		glUniform1f(lightsLinearID, lightLinear);
+		GLfloat lightLinear = 0.0000014f;
+		GLuint lightLinearID = glGetUniformLocation(m_lights, "lightlinear");
+		glUniform1f(lightLinearID, lightLinear);
 
-		GLfloat lightquadratic = 0;
-		GLuint lightsquadraticID = glGetUniformLocation(m_lights, "pointLights[0].quadratic");
-		glUniform1f(lightsquadraticID, lightquadratic);
+		GLfloat lightquadratic = 0.0000000007f;
+		GLuint lightquadraticID = glGetUniformLocation(m_lights, "lightquadratic");
+		glUniform1f(lightquadraticID, lightquadratic);
 
-		glm::vec3 lightAmbient = glm::vec3(1, 1, 1);
-		GLuint lightsAmbientID = glGetUniformLocation(m_lights, "pointLights[0].ambient");
-		glUniform3fv(lightsAmbientID, 1, glm::value_ptr(lightAmbient));
+		glm::vec3 lightAmbient = glm::vec3(0.1f, 0.1f, 0.1f);
+		GLuint lightAmbientID = glGetUniformLocation(m_lights, "lightambient");
+		glUniform3fv(lightAmbientID, 1, glm::value_ptr(lightAmbient));
 
-		glm::vec3 lightDiffuse = glm::vec3(1, 1, 1);
-		GLuint lightsDiffuseID = glGetUniformLocation(m_lights, "pointLights[0].diffuse");
-		glUniform3fv(lightsDiffuseID, 1, glm::value_ptr(lightDiffuse));
+		glm::vec3 lightDiffuse = lightColour;
+		GLuint lightDiffuseID = glGetUniformLocation(m_lights, "lightdiffuse");
+		glUniform3fv(lightDiffuseID, 1, glm::value_ptr(lightDiffuse));
 
-		glm::vec3 lightSpecular = glm::vec3(1, 1, 1);
-		GLuint lightsSpecularID = glGetUniformLocation(m_lights, "pointLights[0].specular");
-		glUniform3fv(lightsSpecularID, 1, glm::value_ptr(lightSpecular));
+		glm::vec3 lightSpecular = glm::vec3(0.1f, 0.1f, 0.1f);
+		GLuint lightSpecularID = glGetUniformLocation(m_lights, "lightspecular");
+		glUniform3fv(lightSpecularID, 1, glm::value_ptr(lightSpecular));
 
 		Helpers::CheckForGLError();
 
@@ -464,8 +516,7 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 				glDrawElements(GL_TRIANGLES, mesh.numElements, GL_UNSIGNED_INT, (void*)0);
 			}
 		}
-
-		// Always a good idea, when debugging at least, to check for GL errors
-		Helpers::CheckForGLError();
 	}
+	// Always a good idea, when debugging at least, to check for GL errors
+	Helpers::CheckForGLError();
 }
