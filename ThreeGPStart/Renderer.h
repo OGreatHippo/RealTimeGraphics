@@ -37,6 +37,7 @@ private:
 
 	GLuint m_lights{ 0 };
 
+	GLuint m_FXAA{ 0 };
 	// Vertex Array Object to wrap all render settings
 	GLuint m_VAO{ 0 };
 
@@ -47,7 +48,13 @@ private:
 
 	bool m_wireframe{ false };
 
+	bool m_FXAAB{ false };
+
+	unsigned int fbo;
+	GLuint renderedTexture;
+
 	bool CreateProgram();
+	bool CreateFBO();
 public:
 	Renderer();
 	~Renderer();

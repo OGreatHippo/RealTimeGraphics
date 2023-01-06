@@ -137,7 +137,13 @@
     <None Include="Data\Shaders\LightVS.glsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Data\Shaders\LightFC.glsl">
+    <None Include="Data\Shaders\LightFS.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Data\Shaders\FXAAVS.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Data\Shaders\FXAAFS.glsl">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

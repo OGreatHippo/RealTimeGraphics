@@ -13,6 +13,7 @@ Renderer::~Renderer()
 	// TODO: clean up any memory used including OpenGL objects via glDelete* calls
 	glDeleteProgram(m_program);
 	glDeleteProgram(m_lights);
+	glDeleteProgram(m_FXAA);
 	//glDeleteBuffers(1, &m_VAO);
 }
 
@@ -28,6 +29,8 @@ void Renderer::DefineGUI()
 
 		ImGui::Checkbox("Wireframe", &m_wireframe);	// A checkbox linked to a member variable
 
+		ImGui::Checkbox("FXAA", &m_FXAAB);
+
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		
 		ImGui::End();
@@ -42,6 +45,8 @@ bool Renderer::CreateProgram()
 
 	m_lights = glCreateProgram();
 
+	m_FXAA = glCreateProgram();
+
 	// Load and create vertex and fragment shaders
 	GLuint vertex_shader{ Helpers::LoadAndCompileShader(GL_VERTEX_SHADER, "Data/Shaders/vertex_shader.glsl") };
 	GLuint fragment_shader{ Helpers::LoadAndCompileShader(GL_FRAGMENT_SHADER, "Data/Shaders/fragment_shader.glsl") };
@@ -49,8 +54,13 @@ bool Renderer::CreateProgram()
 		return false;
 
 	GLuint LightVS{ Helpers::LoadAndCompileShader(GL_VERTEX_SHADER, "Data/Shaders/LightVS.glsl") };
-	GLuint LightFC{ Helpers::LoadAndCompileShader(GL_FRAGMENT_SHADER, "Data/Shaders/LightFC.glsl") };
-	if (LightVS == 0 || LightFC == 0)
+	GLuint LightFS{ Helpers::LoadAndCompileShader(GL_FRAGMENT_SHADER, "Data/Shaders/LightFS.glsl") };
+	if (LightVS == 0 || LightFS == 0)
+		return false;
+
+	GLuint FXAAVS{ Helpers::LoadAndCompileShader(GL_VERTEX_SHADER, "Data/Shaders/FXAAVS.glsl") };
+	GLuint FXAAFS{ Helpers::LoadAndCompileShader(GL_FRAGMENT_SHADER, "Data/Shaders/FXAAFS.glsl") };
+	if (FXAAVS == 0 || FXAAFS == 0)
 		return false;
 
 	// Attach the vertex shader to this program (copies it)
@@ -67,17 +77,69 @@ bool Renderer::CreateProgram()
 	glAttachShader(m_lights, LightVS);
 
 	// Attach the fragment shader (copies it)
-	glAttachShader(m_lights, LightFC);
+	glAttachShader(m_lights, LightFS);
 
 	// Done with the originals of these as we have made copies
 	glDeleteShader(LightVS);
-	glDeleteShader(LightFC);
+	glDeleteShader(LightFS);
+
+	// Attach the vertex shader to this program (copies it)
+	glAttachShader(m_FXAA, FXAAVS);
+
+	// Attach the fragment shader (copies it)
+	glAttachShader(m_FXAA, FXAAFS);
+
+	// Done with the originals of these as we have made copies
+	glDeleteShader(FXAAVS);
+	glDeleteShader(FXAAFS);
 
 	// Link the shaders, checking for errors
 	if (!Helpers::LinkProgramShaders(m_program))
 		return false;
 
 	if (!Helpers::LinkProgramShaders(m_lights))
+		return false;
+
+	if (!Helpers::LinkProgramShaders(m_FXAA))
+		return false;
+
+	CreateFBO();
+
+	return !Helpers::CheckForGLError();
+}
+
+bool Renderer::CreateFBO()
+{
+	glGenBuffers(1, &fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+	glGenTextures(1, &renderedTexture);
+
+	glBindTexture(GL_TEXTURE_2D, renderedTexture);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, renderedTexture, 0);
+
+	// The depth buffer
+	GLuint depthrenderbuffer;
+	glGenRenderbuffers(1, &depthrenderbuffer);
+	glBindRenderbuffer(GL_RENDERBUFFER, depthrenderbuffer);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, 1280, 720);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthrenderbuffer);
+
+	glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderedTexture, 0);
+
+	GLenum DrawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
+	glDrawBuffers(1, DrawBuffers);
+
+	//glDeleteFramebuffers(1, &fbo);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		return false;
 
 	return !Helpers::CheckForGLError();
@@ -338,6 +400,8 @@ bool Renderer::CreateTerrain(int size)
 // Render the scene. Passed the delta time since last called.
 void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 {			
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
 	Helpers::CheckForGLError();
 	// Configure normal pipeline settings
 	glEnable(GL_DEPTH_TEST);
@@ -396,30 +460,6 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 		}
 	}
 
-	glUseProgram(m_program);
-
-	combined_xform_id = glGetUniformLocation(m_program, "combined_xform");
-	glUniformMatrix4fv(combined_xform_id, 1, GL_FALSE, glm::value_ptr(combined_xform));
-	model_xform = glm::mat4(1);
-	model_xform_id = glGetUniformLocation(m_program, "model_xform");
-
-	for (Model& mod : models)
-	{
-		model_xform = mod.modelMatrix;
-
-		glUniformMatrix4fv(model_xform_id, 1, GL_FALSE, glm::value_ptr(model_xform));
-
-		for (Helpers::Mesh& mesh : mod.mesh)
-		{
-			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, mesh.tex);
-			glUniform1i(glGetUniformLocation(m_program, "sampler_tex"), 0);
-
-			glBindVertexArray(mesh.vao);
-			glDrawElements(GL_TRIANGLES, mesh.numElements, GL_UNSIGNED_INT, (void*)0);
-		}
-	}
-
 	// Send the combined matrix to the shader in a uniform
 
 	glEnable(GL_DEPTH_TEST);
@@ -433,15 +473,15 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 
 	glm::vec3 lightPositions[] =
 	{
-		glm::vec3(0, 500, 1700),
-		glm::vec3(0, 500, 0),
-		glm::vec3(0, 500, -1700)
+		glm::vec3(0, 1000, 1700),
+		glm::vec3(0, 1000, 0),
+		glm::vec3(0, 1000, -1700)
 	};
 
 	glm::vec3 lightColours[] =
 	{
-		glm::vec3(1, 0, 0),
 		glm::vec3(0, 1, 0),
+		glm::vec3(1, 0, 0),
 		glm::vec3(0, 0, 1)
 	};
 
@@ -518,5 +558,62 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 		}
 	}
 	// Always a good idea, when debugging at least, to check for GL errors
+	Helpers::CheckForGLError();
+
+	glUseProgram(m_FXAA);
+
+	if (m_FXAAB)
+	{
+		combined_xform_id = glGetUniformLocation(m_FXAA, "combined_xform");
+		glUniformMatrix4fv(combined_xform_id, 1, GL_FALSE, glm::value_ptr(combined_xform));
+		model_xform = glm::mat4(1);
+		model_xform_id = glGetUniformLocation(m_FXAA, "model_xform");
+
+		for (Model& mod : models)
+		{
+			model_xform = mod.modelMatrix;
+
+			glUniformMatrix4fv(model_xform_id, 1, GL_FALSE, glm::value_ptr(model_xform));
+
+			for (Helpers::Mesh& mesh : mod.mesh)
+			{
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, mesh.tex);
+				glUniform1i(glGetUniformLocation(m_FXAA, "sampler_tex"), 0);
+
+				glBindVertexArray(mesh.vao);
+				glDrawElements(GL_TRIANGLES, mesh.numElements, GL_UNSIGNED_INT, (void*)0);
+			}
+		}
+	}
+
+	Helpers::CheckForGLError();
+
+	GLuint quad_VertexArrayID;
+	glGenVertexArrays(1, &quad_VertexArrayID);
+	glBindVertexArray(quad_VertexArrayID);
+
+	static const GLfloat g_quad_vertex_buffer_data[] = {
+		-1.0f, -1.0f, 0.0f,
+		1.0f, -1.0f, 0.0f,
+		-1.0f,  1.0f, 0.0f,
+		-1.0f,  1.0f, 0.0f,
+		1.0f, -1.0f, 0.0f,
+		1.0f,  1.0f, 0.0f,
+	};
+
+	GLuint quad_vertexbuffer;
+	glGenBuffers(1, &quad_vertexbuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, quad_vertexbuffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(g_quad_vertex_buffer_data), g_quad_vertex_buffer_data, GL_STATIC_DRAW);
+
+	// Create and compile our GLSL program from the shaders
+	//GLuint quad_programID = LoadShaders("Passthrough.vertexshader", "SimpleTexture.fragmentshader");
+
+	GLuint texID = glGetUniformLocation(m_FXAA, "sampler_tex");
+	//GLuint timeID = glGetUniformLocation(quad_programID, "time");
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 	Helpers::CheckForGLError();
 }
