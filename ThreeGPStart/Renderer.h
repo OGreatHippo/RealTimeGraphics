@@ -50,8 +50,9 @@ private:
 
 	bool m_FXAAB{ false };
 
-	unsigned int fbo;
+	GLuint fbo;
 	GLuint renderedTexture;
+	unsigned int rectVAO, rectVBO;
 
 	bool CreateProgram();
 	bool CreateFBO();

@@ -13,13 +13,8 @@
 
 #define NR_POINT_LIGHTS 2
 
-uniform struct Material 
-{
-    //sampler2D diffuse;
-    sampler2D specular;
-}; 
   
-uniform Material material;
+//uniform sampler2D specular;
 
 vec3 light_intensity;
 
@@ -47,7 +42,7 @@ vec3 CalcPointLight(vec3 normal, vec3 fragPos, vec3 viewDir)
     // combine results
     vec3 ambient = lightambient * vec3(texture(sampler_tex, varying_coord));
     vec3 diffuse = lightdiffuse * diff * vec3(texture(sampler_tex, varying_coord));
-    vec3 specular = lightspecular * spec * vec3(texture(material.specular, varying_coord));
+    vec3 specular = lightspecular * spec * vec3(texture(sampler_tex, varying_coord));
     ambient *= attenuation;
     diffuse *= attenuation;
     specular *= attenuation;

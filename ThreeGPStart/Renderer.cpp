@@ -14,7 +14,6 @@ Renderer::~Renderer()
 	glDeleteProgram(m_program);
 	glDeleteProgram(m_lights);
 	glDeleteProgram(m_FXAA);
-	//glDeleteBuffers(1, &m_VAO);
 }
 
 // Use IMGUI for a simple on screen GUI
@@ -103,14 +102,12 @@ bool Renderer::CreateProgram()
 	if (!Helpers::LinkProgramShaders(m_FXAA))
 		return false;
 
-	CreateFBO();
-
 	return !Helpers::CheckForGLError();
 }
 
 bool Renderer::CreateFBO()
 {
-	glGenBuffers(1, &fbo);
+	glGenFramebuffers(1, &fbo);
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
 	glGenTextures(1, &renderedTexture);
@@ -152,6 +149,8 @@ bool Renderer::InitialiseGeometry()
 	if (!CreateProgram())
 		return false;
 
+	CreateFBO();
+
 	// Helpers has an object for loading 3D geometry, supports most types
 	
 	CreateTerrain(10000);
@@ -181,8 +180,8 @@ bool Renderer::InitialiseGeometry()
 
 	// Good idea to check for an error now:	
 	Helpers::CheckForGLError();
-	
-	return true;
+
+	return !Helpers::CheckForGLError();
 }
 
 bool Renderer::CreateTerrain(int size)
@@ -400,14 +399,19 @@ bool Renderer::CreateTerrain(int size)
 // Render the scene. Passed the delta time since last called.
 void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 {			
+	Helpers::CheckForGLError();
+
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
-	Helpers::CheckForGLError();
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+	glClearDepth(1.0f);
+
 	// Configure normal pipeline settings
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 
 	glDepthMask(GL_TRUE);
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	glDepthFunc(GL_LEQUAL);
 	glDisable(GL_BLEND);
 
@@ -417,7 +421,6 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	// Clear buffers from previous frame
-	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	// Compute viewport and projection matrix
@@ -429,10 +432,6 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 	// Compute camera view matrix and combine with projection matrix for passing to shader
 	glm::mat4 view_xform = glm::lookAt(camera.GetPosition(), camera.GetPosition() + camera.GetLookVector(), camera.GetUpVector());
 	glm::mat4 combined_xform = projection_xform * view_xform;
-
-	glm::vec3 matSpecular = glm::vec3(0.1f, 0.1f, 0.1f);
-	GLuint matSpecularID = glGetUniformLocation(m_lights, "material.specular");
-	glUniform3fv(matSpecularID, 1, glm::value_ptr(matSpecular));
 
 	Helpers::CheckForGLError();
 
@@ -459,6 +458,7 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 			glDrawElements(GL_TRIANGLES, mesh.numElements, GL_UNSIGNED_INT, (void*)0);
 		}
 	}
+	Helpers::CheckForGLError();
 
 	// Send the combined matrix to the shader in a uniform
 
@@ -527,8 +527,6 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 		GLuint lightSpecularID = glGetUniformLocation(m_lights, "lightspecular");
 		glUniform3fv(lightSpecularID, 1, glm::value_ptr(lightSpecular));
 
-		Helpers::CheckForGLError();
-
 		combined_xform_id = glGetUniformLocation(m_lights, "combined_xform");
 		glUniformMatrix4fv(combined_xform_id, 1, GL_FALSE, glm::value_ptr(combined_xform));
 		model_xform = glm::mat4(1);
@@ -557,63 +555,53 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 			}
 		}
 	}
+
+	glDepthMask(GL_TRUE);
+	//glDepthFunc(GL_EQUAL);
+	glDisable(GL_BLEND);
+	glBlendFunc(GL_ONE, GL_ONE);
+
 	// Always a good idea, when debugging at least, to check for GL errors
 	Helpers::CheckForGLError();
 
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 	glUseProgram(m_FXAA);
+
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
+	glBindTexture(GL_TEXTURE_2D, renderedTexture);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 	if (m_FXAAB)
 	{
-		combined_xform_id = glGetUniformLocation(m_FXAA, "combined_xform");
-		glUniformMatrix4fv(combined_xform_id, 1, GL_FALSE, glm::value_ptr(combined_xform));
-		model_xform = glm::mat4(1);
-		model_xform_id = glGetUniformLocation(m_FXAA, "model_xform");
-
-		for (Model& mod : models)
-		{
-			model_xform = mod.modelMatrix;
-
-			glUniformMatrix4fv(model_xform_id, 1, GL_FALSE, glm::value_ptr(model_xform));
-
-			for (Helpers::Mesh& mesh : mod.mesh)
-			{
-				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, mesh.tex);
-				glUniform1i(glGetUniformLocation(m_FXAA, "sampler_tex"), 0);
-
-				glBindVertexArray(mesh.vao);
-				glDrawElements(GL_TRIANGLES, mesh.numElements, GL_UNSIGNED_INT, (void*)0);
-			}
-		}
+		GLuint FXAAON = glGetUniformLocation(m_FXAA, "u_fxaaOn");
+		glUniform1i(FXAAON, 1);
 	}
 
-	Helpers::CheckForGLError();
+	else
+	{
+		GLuint FXAAON = glGetUniformLocation(m_FXAA, "u_fxaaOn");
+		glUniform1i(FXAAON, 0);
+	}
 
-	GLuint quad_VertexArrayID;
-	glGenVertexArrays(1, &quad_VertexArrayID);
-	glBindVertexArray(quad_VertexArrayID);
+	glUniform1i(glGetUniformLocation(m_FXAA, "sampler_tex"), 0);
 
-	static const GLfloat g_quad_vertex_buffer_data[] = {
-		-1.0f, -1.0f, 0.0f,
-		1.0f, -1.0f, 0.0f,
-		-1.0f,  1.0f, 0.0f,
-		-1.0f,  1.0f, 0.0f,
-		1.0f, -1.0f, 0.0f,
-		1.0f,  1.0f, 0.0f,
-	};
+	glm::vec2 texelStep = glm::vec2(1.0f / 1280, 1.0f / 720);
+	GLuint texelStepID = glGetUniformLocation(m_FXAA, "u_texelStep");
+	glUniform2fv(texelStepID, 1, glm::value_ptr(texelStep));
 
-	GLuint quad_vertexbuffer;
-	glGenBuffers(1, &quad_vertexbuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, quad_vertexbuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(g_quad_vertex_buffer_data), g_quad_vertex_buffer_data, GL_STATIC_DRAW);
+	GLfloat lumaThreshold = glGetUniformLocation(m_FXAA, "u_lumaThreshold");
+	glUniform1f(lumaThreshold, 0.5f);
 
-	// Create and compile our GLSL program from the shaders
-	//GLuint quad_programID = LoadShaders("Passthrough.vertexshader", "SimpleTexture.fragmentshader");
+	GLfloat mulReduce = glGetUniformLocation(m_FXAA, "u_mulReduce");
+	glUniform1f(mulReduce, 1.0f / 8.0f);
 
-	GLuint texID = glGetUniformLocation(m_FXAA, "sampler_tex");
-	//GLuint timeID = glGetUniformLocation(quad_programID, "time");
+	GLfloat minReduce = glGetUniformLocation(m_FXAA, "u_minReduce");
+	glUniform1f(minReduce, 1.0f / 128.0f);
 
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	GLfloat maxSpan = glGetUniformLocation(m_FXAA, "u_maxSpan");
+	glUniform1f(maxSpan, 8.0f);
 
 	Helpers::CheckForGLError();
 }

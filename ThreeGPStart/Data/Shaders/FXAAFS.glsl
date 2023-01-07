@@ -4,6 +4,7 @@ uniform sampler2D sampler_tex;
 
 uniform vec2 u_texelStep;
 uniform int u_showEdges;
+uniform int u_fxaaOn;
 
 uniform float u_lumaThreshold;
 uniform float u_mulReduce;
@@ -17,6 +18,14 @@ out vec4 fragment_colour;
 void main(void)
 {
     vec3 rgbM = texture(sampler_tex, varying_coord).rgb;
+
+	// Possibility to toggle FXAA on and off.
+	if (u_fxaaOn == 0)
+	{
+		fragment_colour = vec4(rgbM, 1.0);
+		
+		return;
+	}
 
 	// Sampling neighbour texels. Offsets are adapted to OpenGL texture coordinates. 
 	vec3 rgbNW = textureOffset(sampler_tex, varying_coord, ivec2(-1, 1)).rgb;
