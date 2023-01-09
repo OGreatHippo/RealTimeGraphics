@@ -14,6 +14,7 @@ Renderer::~Renderer()
 	glDeleteProgram(m_program);
 	glDeleteProgram(m_lights);
 	glDeleteProgram(m_FXAA);
+	glDeleteProgram(m_DOF);
 }
 
 // Use IMGUI for a simple on screen GUI
@@ -30,6 +31,8 @@ void Renderer::DefineGUI()
 
 		ImGui::Checkbox("FXAA", &m_FXAAB);
 
+		ImGui::Checkbox("DOF", &m_DOFB);
+
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		
 		ImGui::End();
@@ -42,24 +45,10 @@ bool Renderer::CreateProgram()
 	// Create a new program (returns a unqiue id)
 	m_program = glCreateProgram();
 
-	m_lights = glCreateProgram();
-
-	m_FXAA = glCreateProgram();
-
 	// Load and create vertex and fragment shaders
 	GLuint vertex_shader{ Helpers::LoadAndCompileShader(GL_VERTEX_SHADER, "Data/Shaders/vertex_shader.glsl") };
 	GLuint fragment_shader{ Helpers::LoadAndCompileShader(GL_FRAGMENT_SHADER, "Data/Shaders/fragment_shader.glsl") };
 	if (vertex_shader == 0 || fragment_shader == 0)
-		return false;
-
-	GLuint LightVS{ Helpers::LoadAndCompileShader(GL_VERTEX_SHADER, "Data/Shaders/LightVS.glsl") };
-	GLuint LightFS{ Helpers::LoadAndCompileShader(GL_FRAGMENT_SHADER, "Data/Shaders/LightFS.glsl") };
-	if (LightVS == 0 || LightFS == 0)
-		return false;
-
-	GLuint FXAAVS{ Helpers::LoadAndCompileShader(GL_VERTEX_SHADER, "Data/Shaders/FXAAVS.glsl") };
-	GLuint FXAAFS{ Helpers::LoadAndCompileShader(GL_FRAGMENT_SHADER, "Data/Shaders/FXAAFS.glsl") };
-	if (FXAAVS == 0 || FXAAFS == 0)
 		return false;
 
 	// Attach the vertex shader to this program (copies it)
@@ -72,6 +61,17 @@ bool Renderer::CreateProgram()
 	glDeleteShader(vertex_shader);
 	glDeleteShader(fragment_shader);
 
+	// Link the shaders, checking for errors
+	if (!Helpers::LinkProgramShaders(m_program))
+		return false;
+
+	m_lights = glCreateProgram();
+
+	GLuint LightVS{ Helpers::LoadAndCompileShader(GL_VERTEX_SHADER, "Data/Shaders/LightVS.glsl") };
+	GLuint LightFS{ Helpers::LoadAndCompileShader(GL_FRAGMENT_SHADER, "Data/Shaders/LightFS.glsl") };
+	if (LightVS == 0 || LightFS == 0)
+		return false;
+
 	// Attach the vertex shader to this program (copies it)
 	glAttachShader(m_lights, LightVS);
 
@@ -81,6 +81,16 @@ bool Renderer::CreateProgram()
 	// Done with the originals of these as we have made copies
 	glDeleteShader(LightVS);
 	glDeleteShader(LightFS);
+
+	if (!Helpers::LinkProgramShaders(m_lights))
+		return false;
+
+	m_FXAA = glCreateProgram();
+
+	GLuint FXAAVS{ Helpers::LoadAndCompileShader(GL_VERTEX_SHADER, "Data/Shaders/FXAAVS.glsl") };
+	GLuint FXAAFS{ Helpers::LoadAndCompileShader(GL_FRAGMENT_SHADER, "Data/Shaders/FXAAFS.glsl") };
+	if (FXAAVS == 0 || FXAAFS == 0)
+		return false;
 
 	// Attach the vertex shader to this program (copies it)
 	glAttachShader(m_FXAA, FXAAVS);
@@ -92,14 +102,27 @@ bool Renderer::CreateProgram()
 	glDeleteShader(FXAAVS);
 	glDeleteShader(FXAAFS);
 
-	// Link the shaders, checking for errors
-	if (!Helpers::LinkProgramShaders(m_program))
-		return false;
-
-	if (!Helpers::LinkProgramShaders(m_lights))
-		return false;
-
 	if (!Helpers::LinkProgramShaders(m_FXAA))
+		return false;
+
+	m_DOF = glCreateProgram();
+
+	GLuint DOFVS{ Helpers::LoadAndCompileShader(GL_VERTEX_SHADER, "Data/Shaders/DOFVS.glsl") };
+	GLuint DOFFS{ Helpers::LoadAndCompileShader(GL_FRAGMENT_SHADER, "Data/Shaders/DOFFS.glsl") };
+	if (DOFVS == 0 || DOFFS == 0)
+		return false;
+
+	// Attach the vertex shader to this program (copies it)
+	glAttachShader(m_DOF, DOFVS);
+
+	// Attach the fragment shader (copies it)
+	glAttachShader(m_DOF, DOFFS);
+
+	// Done with the originals of these as we have made copies
+	glDeleteShader(DOFVS);
+	glDeleteShader(DOFFS);
+
+	if (!Helpers::LinkProgramShaders(m_DOF))
 		return false;
 
 	return !Helpers::CheckForGLError();
@@ -111,11 +134,9 @@ bool Renderer::CreateFBO()
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
 	glGenTextures(1, &renderedTexture);
-
 	glBindTexture(GL_TEXTURE_2D, renderedTexture);
 
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
-
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -123,11 +144,23 @@ bool Renderer::CreateFBO()
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, renderedTexture, 0);
 
 	// The depth buffer
-	GLuint depthrenderbuffer;
 	glGenRenderbuffers(1, &depthrenderbuffer);
 	glBindRenderbuffer(GL_RENDERBUFFER, depthrenderbuffer);
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, 1280, 720);
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthrenderbuffer);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		return false;
+
+	glGenTextures(1, &dofTexture);
+	glBindTexture(GL_TEXTURE_2D, dofTexture);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, dofTexture, 0); //last value may need to be 1
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		return false;
@@ -154,8 +187,8 @@ bool Renderer::InitialiseGeometry()
 	Model Mummy("Data\\Models\\Mummy\\mummy.x", "Data\\Models\\Mummy\\mummy.bmp");
 	Model Mummy2("Data\\Models\\Mummy\\mummy.x", "Data\\Models\\AquaPig\\aqua_pig_1k.png");
 
-	Mummy.transformModel(glm::vec3(1000, 75, 400));
-	Mummy2.transformModel(glm::vec3(1000, 75, -400));
+	Mummy.transformModel(glm::vec3(4000, 75, 400));
+	Mummy2.transformModel(glm::vec3(4000, 75, -400));
 
 	glm::vec3 mummyScale = glm::vec3(80);
 
@@ -395,6 +428,7 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 	Helpers::CheckForGLError();
 
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	glActiveTexture(GL_TEXTURE0);
 
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	glClearDepth(1.0f);
@@ -466,21 +500,23 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 
 	glm::vec3 lightPositions[] =
 	{
-		glm::vec3(0, 1000, 1700),
-		glm::vec3(0, 1000, 0),
-		glm::vec3(0, 1000, -1700)
+		glm::vec3(0, 500, 1700),
+		glm::vec3(-1000, 500, 0),
+		glm::vec3(0, 500, -1700),
+		glm::vec3(4000, 500, 0)
 	};
 
 	glm::vec3 lightColours[] =
 	{
-		glm::vec3(0, 1, 0),
+		glm::vec3(0, 0, 1),
 		glm::vec3(1, 0, 0),
-		glm::vec3(0, 0, 1)
+		glm::vec3(0, 1, 0),
+		glm::vec3(1, 1, 1)
 	};
 
 	glUseProgram(m_lights);
 
-	const int numLights = 3;
+	const int numLights = 4;
 
 	for (int i = 0; i < numLights; i++)
 	{
@@ -596,6 +632,43 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 
 	Helpers::CheckForGLError();
 
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, dofTexture);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	glUseProgram(m_DOF);
+
+	//glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, depthrenderbuffer);
+	glUniform1i(glGetUniformLocation(m_DOF, "depth_tex"), 0);
+
+	glBindTexture(GL_TEXTURE_2D, dofTexture);
+	glUniform1i(glGetUniformLocation(m_DOF, "colour_tex"), 0);
+
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+	if (m_DOFB)
+	{
+		GLuint DOFON = glGetUniformLocation(m_DOF, "u_DOFOn");
+		glUniform1i(DOFON, 1);
+	}
+
+	else
+	{
+		GLuint DOFON = glGetUniformLocation(m_DOF, "u_DOFOn");
+		glUniform1i(DOFON, 0);
+	}
+
+	GLfloat model_distance = glGetUniformLocation(m_FXAA, "model_distance");
+	glUniform1f(model_distance, 5.5f);
+
+	GLfloat nearPlane = glGetUniformLocation(m_FXAA, "near");
+	glUniform1f(nearPlane, 1.0f);
+
+	GLfloat farPlane = glGetUniformLocation(m_FXAA, "far");
+	glUniform1f(farPlane, 50.0f);
 }

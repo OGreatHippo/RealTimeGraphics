@@ -53,9 +53,12 @@ private:
 
 	bool m_FXAAB{ false };
 
+	bool m_DOFB{ false };
+
 	GLuint fbo;
 	GLuint renderedTexture;
-	unsigned int rectVAO, rectVBO;
+	GLuint dofTexture;
+	GLuint depthrenderbuffer;
 
 	bool CreateProgram();
 	bool CreateFBO();
