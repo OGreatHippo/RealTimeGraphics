@@ -129,13 +129,6 @@ bool Renderer::CreateFBO()
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, 1280, 720);
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthrenderbuffer);
 
-	glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderedTexture, 0);
-
-	GLenum DrawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
-	glDrawBuffers(1, DrawBuffers);
-
-	//glDeleteFramebuffers(1, &fbo);
-
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		return false;
 
@@ -585,8 +578,6 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 		glUniform1i(FXAAON, 0);
 	}
 
-	glUniform1i(glGetUniformLocation(m_FXAA, "sampler_tex"), 0);
-
 	glm::vec2 texelStep = glm::vec2(1.0f / 1280, 1.0f / 720);
 	GLuint texelStepID = glGetUniformLocation(m_FXAA, "u_texelStep");
 	glUniform2fv(texelStepID, 1, glm::value_ptr(texelStep));
@@ -604,4 +595,7 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 	glUniform1f(maxSpan, 8.0f);
 
 	Helpers::CheckForGLError();
+
+
+
 }

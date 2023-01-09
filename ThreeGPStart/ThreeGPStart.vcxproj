@@ -132,6 +132,8 @@
     <Natvis Include="External\IMGUI\imgui.natvis" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Data\Shaders\DOFFS.glsl" />
+    <None Include="Data\Shaders\DOFVS.glsl" />
     <None Include="Data\Shaders\fragment_shader.glsl" />
     <None Include="Data\Shaders\FXAAFS.glsl" />
     <None Include="Data\Shaders\FXAAVS.glsl" />

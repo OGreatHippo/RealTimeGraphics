@@ -38,6 +38,9 @@ private:
 	GLuint m_lights{ 0 };
 
 	GLuint m_FXAA{ 0 };
+
+	GLuint m_DOF{ 0 };
+
 	// Vertex Array Object to wrap all render settings
 	GLuint m_VAO{ 0 };
 
