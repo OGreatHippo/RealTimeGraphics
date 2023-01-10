@@ -1,6 +1,5 @@
 #version 330 core
 
-uniform sampler2D depth_tex; // texture uniform
 uniform sampler2D colour_tex; // texture uniform
 
 uniform float model_distance;
@@ -12,7 +11,9 @@ vec2 img_size = vec2(1280, 720);
 
 in vec2 varying_coord;
 
-layout(location = 0) out vec4 fragment_colour;
+//layout(location = 0) out vec4 fragment_colour;
+
+out vec4 fragment_colour;
 
 float to_distance(float depth_colour)
 {
@@ -28,7 +29,7 @@ float to_depth(float dist)
 
 vec4 get_blurred_pixel(vec2 tc)
 {   
-	float depth_colour = texture(depth_tex, tc).r;
+	float depth_colour = texture(colour_tex, tc).a;
     float distance_to_pixel = to_distance(depth_colour);
     
     float x = clamp((distance_to_pixel - model_distance) / model_distance, 0.0, 1.0);
@@ -80,4 +81,6 @@ void main()
     fragment_colour.g = pow(fragment_colour.g, 100.0f);
     fragment_colour.b = pow(fragment_colour.b, 100.0f);
     fragment_colour.a = 1.0f;
+
+    fragment_colour = vec4(1);
 }

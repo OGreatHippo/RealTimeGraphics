@@ -12,7 +12,7 @@ out vec2 varying_coord;
 
 void main()
 {
-    varying_position = vec3(model_xform * vec4(vertex_position, 1.0));
+    varying_position = vec3(combined_xform * model_xform * vec4(vertex_position, 1.0));
     varying_normal = mat3(transpose(inverse(model_xform))) * vertex_normal;  
     varying_coord = vertex_texcoord;
     

@@ -33,6 +33,10 @@ void Renderer::DefineGUI()
 
 		ImGui::Checkbox("DOF", &m_DOFB);
 
+		ImGui::InputScalar("nearPlane", ImGuiDataType_Float, &nearPlane);
+
+		ImGui::InputScalar("farPlane", ImGuiDataType_Float, &farPlane);
+
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		
 		ImGui::End();
@@ -134,14 +138,18 @@ bool Renderer::CreateFBO()
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
 	glGenTextures(1, &renderedTexture);
+	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, renderedTexture);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1280, 720, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, renderedTexture, 0);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		return false;
 
 	// The depth buffer
 	glGenRenderbuffers(1, &depthrenderbuffer);
@@ -152,20 +160,13 @@ bool Renderer::CreateFBO()
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		return false;
 
-	glGenTextures(1, &dofTexture);
-	glBindTexture(GL_TEXTURE_2D, dofTexture);
-
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, dofTexture, 0); //last value may need to be 1
-
-	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-		return false;
-
 	return !Helpers::CheckForGLError();
+}
+
+float Renderer::distance(glm::vec3 models, glm::vec3 camera)
+{
+	float d = sqrt(pow(camera.x - models.x, 2) + pow(camera.y - models.y, 2) + pow(camera.z - models.z, 2) * 1.0);
+	return d;
 }
 
 // Load / create geometry into OpenGL buffers	
@@ -428,6 +429,7 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 	Helpers::CheckForGLError();
 
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
 	glActiveTexture(GL_TEXTURE0);
 
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
@@ -595,24 +597,12 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	glUseProgram(m_FXAA);
-
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 	glBindTexture(GL_TEXTURE_2D, renderedTexture);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-	if (m_FXAAB)
-	{
-		GLuint FXAAON = glGetUniformLocation(m_FXAA, "u_fxaaOn");
-		glUniform1i(FXAAON, 1);
-	}
-
-	else
-	{
-		GLuint FXAAON = glGetUniformLocation(m_FXAA, "u_fxaaOn");
-		glUniform1i(FXAAON, 0);
-	}
+	glUseProgram(m_FXAA);
 
 	glm::vec2 texelStep = glm::vec2(1.0f / 1280, 1.0f / 720);
 	GLuint texelStepID = glGetUniformLocation(m_FXAA, "u_texelStep");
@@ -630,26 +620,40 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 	GLfloat maxSpan = glGetUniformLocation(m_FXAA, "u_maxSpan");
 	glUniform1f(maxSpan, 8.0f);
 
+	if (m_FXAAB)
+	{
+		GLuint FXAAON = glGetUniformLocation(m_FXAA, "u_fxaaOn");
+		glUniform1i(FXAAON, 1);
+	}
+
+	else
+	{
+		GLuint FXAAON = glGetUniformLocation(m_FXAA, "u_fxaaOn");
+		glUniform1i(FXAAON, 0);
+	}
+
 	Helpers::CheckForGLError();
 
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, dofTexture);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, dofColourTexture);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	glUseProgram(m_DOF);
 
-	//glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, depthrenderbuffer);
-	glUniform1i(glGetUniformLocation(m_DOF, "depth_tex"), 0);
+	GLuint model_distance = glGetUniformLocation(m_DOF, "model_distance");
+	glUniform1f(model_distance, distance(glm::vec3(0, 0, 0), camera.GetPosition()));
 
-	glBindTexture(GL_TEXTURE_2D, dofTexture);
+	nearPlane = glGetUniformLocation(m_DOF, "near");
+	glUniform1f(nearPlane, 1.0f);
+
+	farPlane = glGetUniformLocation(m_DOF, "far");
+	glUniform1f(farPlane, 500.0f);
+
 	glUniform1i(glGetUniformLocation(m_DOF, "colour_tex"), 0);
-
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 	if (m_DOFB)
 	{
@@ -663,12 +667,8 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 		glUniform1i(DOFON, 0);
 	}
 
-	GLfloat model_distance = glGetUniformLocation(m_FXAA, "model_distance");
-	glUniform1f(model_distance, 5.5f);
+	glBindTexture(GL_TEXTURE_2D, renderedTexture);
 
-	GLfloat nearPlane = glGetUniformLocation(m_FXAA, "near");
-	glUniform1f(nearPlane, 1.0f);
-
-	GLfloat farPlane = glGetUniformLocation(m_FXAA, "far");
-	glUniform1f(farPlane, 50.0f);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
+

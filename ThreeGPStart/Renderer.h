@@ -57,11 +57,17 @@ private:
 
 	GLuint fbo;
 	GLuint renderedTexture;
-	GLuint dofTexture;
+	GLuint dofDepthTexture;
+	GLuint dofColourTexture;
 	GLuint depthrenderbuffer;
+
+	GLfloat nearPlane;
+	GLfloat farPlane;
 
 	bool CreateProgram();
 	bool CreateFBO();
+
+	float distance(glm::vec3 models, glm::vec3 camera);
 public:
 	Renderer();
 	~Renderer();
