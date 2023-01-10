@@ -11,5 +11,5 @@ out vec4 fragment_colour;
 void main()
 {    
     vec3 tex_colour = texture(sampler_tex, varying_coord).rgb;
-    fragment_colour = vec4(tex_colour * 0.1, varying_position.z * 0.001);
+    fragment_colour = vec4(tex_colour * 0.1, 1.0);
 } 

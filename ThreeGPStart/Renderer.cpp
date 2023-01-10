@@ -33,10 +33,6 @@ void Renderer::DefineGUI()
 
 		ImGui::Checkbox("DOF", &m_DOFB);
 
-		ImGui::InputScalar("nearPlane", ImGuiDataType_Float, &nearPlane);
-
-		ImGui::InputScalar("farPlane", ImGuiDataType_Float, &farPlane);
-
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		
 		ImGui::End();
@@ -141,12 +137,40 @@ bool Renderer::CreateFBO()
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, renderedTexture);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1280, 720, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, renderedTexture, 0);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		return false;
+
+	glGenTextures(1, &dofDepthTexture);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, dofDepthTexture);
+
+	glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH_COMPONENT32F, 1280, 720);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, dofDepthTexture, 0);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		return false;
+
+	glGenTextures(1, &dofColourTexture);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, dofColourTexture);
+
+	glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, 1280, 720);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, dofColourTexture, 0);
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		return false;
@@ -159,6 +183,9 @@ bool Renderer::CreateFBO()
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		return false;
+
+	GLenum drawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+	glDrawBuffers(1, drawBuffers);
 
 	return !Helpers::CheckForGLError();
 }
@@ -645,15 +672,19 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 	glUseProgram(m_DOF);
 
 	GLuint model_distance = glGetUniformLocation(m_DOF, "model_distance");
-	glUniform1f(model_distance, distance(glm::vec3(0, 0, 0), camera.GetPosition()));
+	glUniform1f(model_distance, distance(glm::vec3(10000, 10000, 10000), camera.GetPosition()));
 
 	nearPlane = glGetUniformLocation(m_DOF, "near");
 	glUniform1f(nearPlane, 1.0f);
 
 	farPlane = glGetUniformLocation(m_DOF, "far");
-	glUniform1f(farPlane, 500.0f);
+	glUniform1f(farPlane, 1000.0f);
 
-	glUniform1i(glGetUniformLocation(m_DOF, "colour_tex"), 0);
+	glActiveTexture(GL_TEXTURE1);
+	glUniform1i(glGetUniformLocation(m_DOF, "depth_tex"), 2);
+
+	glActiveTexture(GL_TEXTURE2);
+	glUniform1i(glGetUniformLocation(m_DOF, "colour_tex"), 2);
 
 	if (m_DOFB)
 	{
