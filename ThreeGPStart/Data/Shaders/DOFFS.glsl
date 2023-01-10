@@ -29,9 +29,10 @@ float to_depth(float dist)
 vec4 get_blurred_pixel(vec2 tc)
 {   
 	float depth_colour = texture(depth_tex, tc).r;
+
     float distance_to_pixel = to_distance(depth_colour);
     
-    float x = clamp((distance_to_pixel - model_distance) / model_distance, 0.0, 1.0);
+    float x = clamp((distance_to_pixel - 0) / 0, 0.0, 1.0);
    
     // tent function
     if(x > 0.5)
@@ -44,7 +45,7 @@ vec4 get_blurred_pixel(vec2 tc)
     float directions = 16.0; // BLUR directions (Default 16.0 - More is better but slower)
     float quality = 10.0; // BLUR quality (Default 4.0 - More is better but slower)
     float size = 8.0; // BLUR size (radius)
-        vec2 radius = vec2(size/img_size.x, size/img_size.y);
+    vec2 radius = vec2(size/img_size.x, size/img_size.y);
 
    vec4 blurred_colour = texture(colour_tex, tc);
     
@@ -75,6 +76,8 @@ void main()
     fragment_colour.rgb = get_blurred_pixel(varying_coord).rgb;
     fragment_colour.a = 1.0f;
     return;
+
+    fragment_colour.rgb = texture(depth_tex, varying_coord).rgb;
 
     fragment_colour.r = pow(fragment_colour.r, 100.0f);
     fragment_colour.g = pow(fragment_colour.g, 100.0f);
