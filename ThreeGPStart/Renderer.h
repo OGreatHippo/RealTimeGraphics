@@ -64,6 +64,11 @@ private:
 	GLfloat nearPlane;
 	GLfloat farPlane;
 
+	const float sliderStep = 1.0f;
+
+	GLfloat nearV = 1.0f;
+	GLfloat farV = 3000.0f;
+
 	bool CreateProgram();
 	bool CreateFBO();
 

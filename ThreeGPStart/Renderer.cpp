@@ -33,6 +33,14 @@ void Renderer::DefineGUI()
 
 		ImGui::Checkbox("DOF", &m_DOFB);
 
+		/*ImGui::SliderFloat("near", &nearV, 1.0f, 1000.0f);
+
+		ImGui::SliderFloat("far", &farV, 1.0f, 5000.0f);*/
+
+		ImGui::InputScalar("near", ImGuiDataType_Float, &nearV, &sliderStep);
+
+		ImGui::InputScalar("far", ImGuiDataType_Float, &farV, &sliderStep);
+
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		
 		ImGui::End();
@@ -672,13 +680,13 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 	glUseProgram(m_DOF);
 
 	GLuint model_distance = glGetUniformLocation(m_DOF, "model_distance");
-	glUniform1f(model_distance, distance(glm::vec3(10000, 10000, 10000), camera.GetPosition()));
+	glUniform1f(model_distance, distance(glm::vec3(0, 0, 0), camera.GetPosition()));
 
 	nearPlane = glGetUniformLocation(m_DOF, "near");
-	glUniform1f(nearPlane, 1.0f);
+	glUniform1f(nearPlane, nearV);
 
 	farPlane = glGetUniformLocation(m_DOF, "far");
-	glUniform1f(farPlane, 1000.0f);
+	glUniform1f(farPlane, farV);
 
 	glActiveTexture(GL_TEXTURE1);
 	glUniform1i(glGetUniformLocation(m_DOF, "depth_tex"), 2);
