@@ -152,6 +152,12 @@
     <None Include="Data\Shaders\DOFVS.glsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Data\Shaders\ShadowMappingVS.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Data\Shaders\ShadowMappingFS.glsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="GraphicsFramework.rc" />

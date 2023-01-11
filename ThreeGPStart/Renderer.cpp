@@ -33,10 +33,6 @@ void Renderer::DefineGUI()
 
 		ImGui::Checkbox("DOF", &m_DOFB);
 
-		/*ImGui::SliderFloat("near", &nearV, 1.0f, 1000.0f);
-
-		ImGui::SliderFloat("far", &farV, 1.0f, 5000.0f);*/
-
 		ImGui::InputScalar("near", ImGuiDataType_Float, &nearV, &sliderStep);
 
 		ImGui::InputScalar("far", ImGuiDataType_Float, &farV, &sliderStep);

@@ -1,7 +1,7 @@
 #version 330 core
 
 uniform sampler2D depth_tex; // texture uniform
-uniform sampler2D colour_tex; // texture uniform
+uniform sampler2D sampler_tex; // texture uniform
 
 uniform float model_distance;
 uniform float near;
@@ -23,7 +23,7 @@ float to_distance(float depth_colour)
 
 void main()
 {
-    vec4 blurred_colour = texture(colour_tex, varying_coord);
+    vec4 blurred_colour = texture(sampler_tex, varying_coord);
 
     // Possibility to toggle DOF on and off.
 	if (u_DOFOn == 0)
@@ -39,7 +39,7 @@ void main()
     float quality = 10.0; // BLUR quality (Default 4.0 - More is better but slower)
     float size = 8.0; // BLUR size (radius)
 
-	vec4 unblurred_colour = texture(colour_tex, varying_coord);
+	vec4 unblurred_colour = texture(sampler_tex, varying_coord);
 	float depth_colour = texture(depth_tex, varying_coord).r;
  
     float distance_to_pixel = to_distance(depth_colour);
@@ -51,7 +51,7 @@ void main()
 
     for( float d=0.0; d<pi_times_2; d+= pi_times_2/directions)
 		for(float i=1.0/quality; i<=1.0; i+=1.0/quality)
-			blurred_colour += texture( colour_tex, varying_coord + vec2(cos(d),sin(d))*radius*x*i);	
+			blurred_colour += texture( sampler_tex, varying_coord + vec2(cos(d),sin(d))*radius*x*i);	
     
     // Output to screen
     blurred_colour /= quality * directions - 15.0;

@@ -139,6 +139,8 @@
     <None Include="Data\Shaders\FXAAVS.glsl" />
     <None Include="Data\Shaders\LightFS.glsl" />
     <None Include="Data\Shaders\LightVS.glsl" />
+    <None Include="Data\Shaders\ShadowMappingFS.glsl" />
+    <None Include="Data\Shaders\ShadowMappingVS.glsl" />
     <None Include="Data\Shaders\vertex_shader.glsl" />
   </ItemGroup>
   <ItemGroup>
