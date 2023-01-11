@@ -41,6 +41,8 @@ private:
 
 	GLuint m_DOF{ 0 };
 
+	GLuint m_ShadowM{ 0 };
+
 	// Vertex Array Object to wrap all render settings
 	GLuint m_VAO{ 0 };
 
@@ -64,10 +66,10 @@ private:
 	GLfloat nearPlane;
 	GLfloat farPlane;
 
-	const float sliderStep = 1.0f;
-
 	GLfloat nearV = 1.0f;
 	GLfloat farV = 3000.0f;
+
+	GLuint depthCubeMap;
 
 	bool CreateProgram();
 	bool CreateFBO();

@@ -1,5 +1,7 @@
 #version 330 core
 
+// Found at https://github.com/McNopper/OpenGL/blob/master/Example42/shader/fxaa.frag.glsl
+
 uniform sampler2D sampler_tex; 
 
 uniform vec2 u_texelStep;

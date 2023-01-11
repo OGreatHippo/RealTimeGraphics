@@ -13,6 +13,7 @@ Renderer::~Renderer()
 	// TODO: clean up any memory used including OpenGL objects via glDelete* calls
 	glDeleteProgram(m_program);
 	glDeleteProgram(m_lights);
+	glDeleteProgram(m_ShadowM);
 	glDeleteProgram(m_FXAA);
 	glDeleteProgram(m_DOF);
 }
@@ -32,10 +33,6 @@ void Renderer::DefineGUI()
 		ImGui::Checkbox("FXAA", &m_FXAAB);
 
 		ImGui::Checkbox("DOF", &m_DOFB);
-
-		ImGui::InputScalar("near", ImGuiDataType_Float, &nearV, &sliderStep);
-
-		ImGui::InputScalar("far", ImGuiDataType_Float, &farV, &sliderStep);
 
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		
@@ -88,6 +85,31 @@ bool Renderer::CreateProgram()
 
 	if (!Helpers::LinkProgramShaders(m_lights))
 		return false;
+
+	//m_ShadowM = glCreateProgram();
+
+	//GLuint ShadowMVS{ Helpers::LoadAndCompileShader(GL_VERTEX_SHADER, "Data/Shaders/ShadowMappingVS.glsl") };
+	//GLuint ShadowMFS{ Helpers::LoadAndCompileShader(GL_FRAGMENT_SHADER, "Data/Shaders/ShadowMappingFS.glsl") };
+	//GLuint ShadowMGS{ Helpers::LoadAndCompileShader(GL_FRAGMENT_SHADER, "Data/Shaders/ShadowMappingGS.glsl") };
+	//if (ShadowMVS == 0 || ShadowMFS == 0 || ShadowMGS == 0)
+	//	return false;
+
+	//// Attach the vertex shader to this program (copies it)
+	//glAttachShader(m_ShadowM, ShadowMVS);
+
+	//// Attach the fragment shader (copies it)
+	//glAttachShader(m_ShadowM, ShadowMFS);
+
+	//// Attach the geometry shader (copies it)
+	//glAttachShader(m_ShadowM, ShadowMGS);
+
+	//// Done with the originals of these as we have made copies
+	//glDeleteShader(ShadowMVS);
+	//glDeleteShader(ShadowMFS);
+	//glDeleteShader(ShadowMGS);
+
+	//if (!Helpers::LinkProgramShaders(m_ShadowM))
+	//	return false;
 
 	m_FXAA = glCreateProgram();
 
@@ -175,6 +197,23 @@ bool Renderer::CreateFBO()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, dofColourTexture, 0);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		return false;
+
+	glGenTextures(1, &depthCubeMap);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, depthCubeMap);
+
+	for (unsigned int i = 0; i < 6; ++i)
+	{
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_DEPTH_COMPONENT, 1280, 720, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	}
+
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		return false;
@@ -619,12 +658,30 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 	}
 
 	glDepthMask(GL_TRUE);
-	//glDepthFunc(GL_EQUAL);
 	glDisable(GL_BLEND);
 	glBlendFunc(GL_ONE, GL_ONE);
 
 	// Always a good idea, when debugging at least, to check for GL errors
 	Helpers::CheckForGLError();
+
+	//Shadow Mapping Stuff Start
+
+	/*glUseProgram(m_ShadowM);
+
+	farPlane = glGetUniformLocation(m_ShadowM, "far");
+	glUniform1f(farPlane, farV);
+	
+	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthCubeMap, 0);
+	glDrawBuffer(GL_NONE);
+	glReadBuffer(GL_NONE);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	glGetUniformLocation(m_ShadowM, "")
+	
+*/
+
+
+	//Shadow Mapping Stuff End
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -665,10 +722,10 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 
 	Helpers::CheckForGLError();
 
-	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	 glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
-	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D, dofColourTexture);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, renderedTexture);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -685,10 +742,10 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 	glUniform1f(farPlane, farV);
 
 	glActiveTexture(GL_TEXTURE1);
-	glUniform1i(glGetUniformLocation(m_DOF, "depth_tex"), 2);
+	glUniform1i(glGetUniformLocation(m_DOF, "depth_tex"), 0);
 
 	glActiveTexture(GL_TEXTURE2);
-	glUniform1i(glGetUniformLocation(m_DOF, "colour_tex"), 2);
+	glUniform1i(glGetUniformLocation(m_DOF, "colour_tex"), 0);
 
 	if (m_DOFB)
 	{

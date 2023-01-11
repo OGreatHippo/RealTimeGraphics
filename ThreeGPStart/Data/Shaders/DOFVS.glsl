@@ -1,5 +1,7 @@
 #version 330 core
 
+// Found at https://www.gamedev.net/forums/topic/713242-opengl-4-depth-of-field/
+
 out vec2 varying_coord;
 
 void main(void)

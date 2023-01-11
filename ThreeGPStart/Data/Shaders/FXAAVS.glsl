@@ -1,5 +1,7 @@
 #version 330 core
 
+// Found at https://github.com/McNopper/OpenGL/blob/master/Example42/shader/fxaa.frag.glsl
+
 out vec2 varying_coord;
 
 void main(void)

@@ -1,5 +1,7 @@
 #version 330 core
 
+// Found at https://www.gamedev.net/forums/topic/713242-opengl-4-depth-of-field/
+
 uniform sampler2D depth_tex; // texture uniform
 uniform sampler2D sampler_tex; // texture uniform
 
