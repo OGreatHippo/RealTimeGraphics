@@ -2,7 +2,7 @@
 
 uniform sampler2DShadow shadow_map;
 
-uniform sampler2D colour_tex;
+uniform sampler2D sampler_tex;
 
 in vec2 ftexcoord;
 in vec3 Position;
@@ -30,7 +30,7 @@ float MaterialShininess = 10.0;
 layout (location = 0) out vec4 frag_colour;
 
 
-vec4 t = texture(colour_tex, ftexcoord);
+vec4 t = texture(sampler_tex, ftexcoord);
 
 
 vec3 phongModelDiffAndSpec(bool do_specular)
@@ -40,7 +40,7 @@ vec3 phongModelDiffAndSpec(bool do_specular)
     vec3 v = normalize(-Position.xyz);
     vec3 r = reflect( -s, n );
     float sDotN = max( dot(s,n), 0.0 );
-    vec3 diffuse = LightIntensity * texture(colour_tex, ftexcoord).rgb * sDotN;
+    vec3 diffuse = LightIntensity * texture(sampler_tex, ftexcoord).rgb * sDotN;
     vec3 spec = vec3(0.0);
 
     if( sDotN > 0.0 )
@@ -66,6 +66,10 @@ vec3 phongModelDiffAndSpec(bool do_specular)
     return ret;
 }
 
+//subroutine void RenderPassType();
+//subroutine uniform RenderPassType RenderPass;
+
+//subroutine (RenderPassType)
 void shadeWithShadow()
 {
 
@@ -118,6 +122,7 @@ void shadeWithShadow()
     */
 }
 
+//subroutine (RenderPassType)
 void recordDepth()
 {
     // Do nothing, depth will be written automatically
@@ -125,5 +130,5 @@ void recordDepth()
 
 void main() {
     // This will call either shadeWithShadow or recordDepth
-    RenderPass();
+    //RenderPass();
 }
