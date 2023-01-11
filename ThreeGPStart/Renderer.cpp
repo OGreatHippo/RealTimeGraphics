@@ -34,6 +34,10 @@ void Renderer::DefineGUI()
 
 		ImGui::Checkbox("DOF", &m_DOFB);
 
+		ImGui::InputScalar("focusPoint", ImGuiDataType_Float, &focusPoint, &sliderStep);
+
+		ImGui::InputScalar("focusScale", ImGuiDataType_Float, &focusScaleV, &sliderStep);
+
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		
 		ImGui::End();
@@ -163,57 +167,12 @@ bool Renderer::CreateFBO()
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, renderedTexture);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1280, 720, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, renderedTexture, 0);
-
-	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-		return false;
-
-	glGenTextures(1, &dofDepthTexture);
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, dofDepthTexture);
-
-	glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH_COMPONENT32F, 1280, 720);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, dofDepthTexture, 0);
-
-	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-		return false;
-
-	glGenTextures(1, &dofColourTexture);
-	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D, dofColourTexture);
-
-	glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, 1280, 720);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, dofColourTexture, 0);
-
-	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-		return false;
-
-	glGenTextures(1, &depthCubeMap);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, depthCubeMap);
-
-	for (unsigned int i = 0; i < 6; ++i)
-	{
-		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_DEPTH_COMPONENT, 1280, 720, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-	}
-
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		return false;
@@ -226,9 +185,6 @@ bool Renderer::CreateFBO()
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		return false;
-
-	GLenum drawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-	glDrawBuffers(1, drawBuffers);
 
 	return !Helpers::CheckForGLError();
 }
@@ -722,30 +678,32 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 
 	Helpers::CheckForGLError();
 
-	 glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	//glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, renderedTexture);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	glUseProgram(m_DOF);
+	//glDisable(GL_BLEND);
+
+	/*glUseProgram(m_DOF);
 
 	GLuint model_distance = glGetUniformLocation(m_DOF, "model_distance");
 	glUniform1f(model_distance, distance(glm::vec3(0, 0, 0), camera.GetPosition()));
 
-	nearPlane = glGetUniformLocation(m_DOF, "near");
-	glUniform1f(nearPlane, nearV);
-
-	farPlane = glGetUniformLocation(m_DOF, "far");
+	farPlane = glGetUniformLocation(m_DOF, "uFar");
 	glUniform1f(farPlane, farV);
 
-	glActiveTexture(GL_TEXTURE1);
-	glUniform1i(glGetUniformLocation(m_DOF, "depth_tex"), 0);
+	focusP = glGetUniformLocation(m_DOF, "focusPoint");
+	glUniform1f(focusP, focusPoint);
 
-	glActiveTexture(GL_TEXTURE2);
-	glUniform1i(glGetUniformLocation(m_DOF, "colour_tex"), 0);
+	focusS = glGetUniformLocation(m_DOF, "focusScale");
+	glUniform1f(focusS, focusScaleV);
+
+	glActiveTexture(GL_TEXTURE0);
+	glUniform1i(glGetUniformLocation(m_DOF, "sampler_tex"), 0);
 
 	if (m_DOFB)
 	{
@@ -761,6 +719,6 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 
 	glBindTexture(GL_TEXTURE_2D, renderedTexture);
 
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);*/
 }
 

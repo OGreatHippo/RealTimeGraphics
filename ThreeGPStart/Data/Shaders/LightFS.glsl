@@ -61,5 +61,5 @@ void main(void)
 
     tex_colour *= CalcPointLight(varying_normal, varying_position, viewDir) * light_intensity;
 
-	fragment_colour = vec4(tex_colour, 1.0);
+	fragment_colour = vec4(tex_colour, varying_position.z * 0.001);
 }

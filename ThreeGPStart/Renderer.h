@@ -63,11 +63,16 @@ private:
 	GLuint dofColourTexture;
 	GLuint depthrenderbuffer;
 
-	GLfloat nearPlane;
-	GLfloat farPlane;
+	GLfloat sliderStep = 1.0f;
 
-	GLfloat nearV = 1.0f;
+	GLfloat farPlane;
 	GLfloat farV = 3000.0f;
+
+	GLfloat focusP;
+	GLfloat focusPoint = 78.0;
+	GLfloat focusS;
+	GLfloat focusScaleV = 15.0f;
+	GLfloat focusScale = (0.5 * 0.5) * focusScaleV;
 
 	GLuint depthCubeMap;
 
