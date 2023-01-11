@@ -678,17 +678,17 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 
 	Helpers::CheckForGLError();
 
-	//glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, renderedTexture);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	//glDisable(GL_BLEND);
+	glDisable(GL_BLEND);
 
-	/*glUseProgram(m_DOF);
+	glUseProgram(m_DOF);
 
 	GLuint model_distance = glGetUniformLocation(m_DOF, "model_distance");
 	glUniform1f(model_distance, distance(glm::vec3(0, 0, 0), camera.GetPosition()));
@@ -719,6 +719,6 @@ void Renderer::Render(const Helpers::Camera& camera, float deltaTime)
 
 	glBindTexture(GL_TEXTURE_2D, renderedTexture);
 
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);*/
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
